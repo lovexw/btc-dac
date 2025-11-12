@@ -1,0 +1,79 @@
+/* 颜色参考：深蓝底 + 青/蓝/紫高亮（接近 hab-b 风格） */
+:root {
+  --bg: #0b1220;
+  --panel: #0f1933;
+  --muted: #7a89a5;
+  --text: #dbe7ff;
+  --heading: #f0f6ff;
+  --accent-cyan: #22d3ee;
+  --accent-blue: #3b82f6;
+  --accent-violet: #8b5cf6;
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --grid: rgba(255,255,255,0.05);
+  --chip: rgba(59,130,246,0.15);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, PingFang SC, Helvetica Neue, Arial, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji";
+  background: radial-gradient(1200px 600px at 70% -10%, rgba(59,130,246,.15), transparent),
+              radial-gradient(800px 400px at 10% 10%, rgba(139,92,246,.12), transparent),
+              var(--bg);
+  color: var(--text);
+}
+
+.container { width: min(1200px, 92vw); margin: 0 auto; }
+.site-header { border-bottom: 1px solid var(--grid); backdrop-filter: blur(6px); position: sticky; top: 0; z-index: 10; background: rgba(11,18,32,0.75); }
+.site-header .brand { margin: 0; padding: 18px 0 4px; font-size: 22px; font-weight: 800; letter-spacing: .2px; background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue), var(--accent-violet)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.site-header .subtitle { margin: 0 0 14px; color: var(--muted); }
+
+.hero { display: grid; grid-template-columns: 1.2fr .9fr; gap: 24px; padding: 24px 0; }
+.hero .hero-copy h2 { margin-top: 8px; color: var(--heading); }
+.hero .disclaimer { color: var(--muted); }
+.disclaimer.small { font-size: 12px; }
+
+.card { background: linear-gradient(180deg, rgba(34,211,238,.08), rgba(59,130,246,.08)), var(--panel); border: 1px solid var(--grid); border-radius: 16px; padding: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+.card h3 { margin: 0 0 10px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid2 label { display: grid; gap: 6px; font-size: 14px; color: var(--muted); }
+.grid2 input, .grid2 select { width: 100%; padding: 10px 12px; background: #0b1427; border: 1px solid var(--grid); color: var(--text); border-radius: 10px; }
+
+.presets { margin: 10px 0 6px; }
+.presets button { margin-right: 8px; margin-bottom: 6px; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--grid); background: var(--chip); color: var(--text); cursor: pointer; }
+.presets button:hover { border-color: var(--accent-blue); }
+
+.actions { margin-top: 8px; }
+.actions button { padding: 10px 14px; border-radius: 10px; background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue)); border: none; color: white; font-weight: 700; cursor: pointer; }
+.actions button:hover { filter: brightness(1.05); }
+
+.panels { display: grid; grid-template-columns: 1fr; gap: 16px; margin: 20px 0; }
+.panel { background: var(--panel); border: 1px solid var(--grid); border-radius: 16px; padding: 12px; }
+.panel h3 { margin: 6px 0 10px; color: var(--heading); }
+
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 22px 0; }
+.metric-card { background: linear-gradient(180deg, rgba(16,185,129,.08), rgba(34,211,238,.05)), var(--panel); border: 1px solid var(--grid); border-radius: 16px; padding: 12px; }
+.metric-card h4 { margin: 6px 0 10px; }
+.metric-card ul { list-style: none; padding: 0; margin: 0; color: var(--text); }
+.metric-card li { padding: 4px 0; border-bottom: 1px dashed var(--grid); }
+.metric-card li:last-child { border-bottom: 0; }
+
+.explainer { margin: 28px 0 40px; }
+.explainer h3 { color: var(--heading); margin-bottom: 8px; }
+.explainer ul { margin-top: 6px; color: var(--text); }
+
+.site-footer { border-top: 1px solid var(--grid); margin-top: 30px; color: var(--muted); }
+.site-footer .container { padding: 18px 0 28px; }
+
+@media (max-width: 980px) {
+  .hero { grid-template-columns: 1fr; }
+  .metrics { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 620px) {
+  .grid2 { grid-template-columns: 1fr; }
+  .metrics { grid-template-columns: 1fr; }
+}

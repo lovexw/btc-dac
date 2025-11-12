@@ -1,0 +1,24 @@
+# General
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Node (if later used)
+node_modules/
+.dist/
+dist/
+.build/
+build/
+.cache/
+.temp/
+.tmp/
+
+# Editor
+.vscode/
+.idea/
+*.swp
