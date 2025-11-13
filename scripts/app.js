@@ -1,8 +1,8 @@
 /*
-  比特币定投（DCA）策略实验室
+  比特币定投（DCA）魅力展示
   - 数据: ./public/btc-price.csv（已裁剪 2017-01-01 至 2025-11-01）
   - 图表: Chart.js + date-fns 适配
-  - 策略: DCA、一次性买入、逢跌买入、趋势定投
+  - 策略: 仅 DCA
 */
 
 const state = {
@@ -71,7 +71,7 @@ function fmtPct(x) {
 }
 function daysBetween(a, b) { return (b - a) / 86400000; }
 
-// 计算简单移动平均
+// 计算简单移动平均（当前版本未使用，但保留以便扩展）
 function sma(arr, window) {
   const out = new Array(arr.length).fill(NaN);
   let sum = 0;
@@ -121,83 +121,6 @@ function simulateDCA(data, start, end, amount, frequency) {
     }
     const value = units * p;
     timeline.push({ t, p, cashIn, units, value });
-  }
-  const endValue = timeline.length ? timeline[timeline.length - 1].value : 0;
-  return { timeline, result: { cashIn, units, endValue } };
-}
-
-function simulateLumpSum(data, start, end, amount, frequency) {
-  // 取与 DCA 同等总投入：期数 × 金额
-  const periods = buildScheduleIdx(data, start, end, frequency).length;
-  const total = periods * amount;
-  // 在起始日（或之后的第一个可交易日）一次性买入
-  const iStart = data.findIndex(d => d.t >= start);
-  if (iStart < 0) return { timeline: [], result: { cashIn: 0, units: 0, endValue: 0 } };
-  const startPrice = data[iStart].p;
-  const units = total / startPrice;
-  const timeline = [];
-  for (let i = iStart; i < data.length && data[i].t <= end; i++) {
-    const { t, p } = data[i];
-    timeline.push({ t, p, cashIn: total, units, value: units * p });
-  }
-  const endValue = timeline.length ? timeline[timeline.length - 1].value : 0;
-  return { timeline, result: { cashIn: total, units, endValue } };
-}
-
-function simulateDipBuy(data, start, end, amount, frequency, dipPct = 0.2) {
-  // 每期先累积现金，遇到从近高点的回撤 >= dipPct 时，用全部现金买入
-  const schedule = buildScheduleIdx(data, start, end, frequency);
-  const scheduleSet = new Set(schedule);
-  let cashIn = 0, units = 0, cashPile = 0;
-  const timeline = [];
-  let peak = -Infinity;
-
-  for (let i = 0; i < data.length; i++) {
-    const { t, p } = data[i];
-    if (t < start || t > end) continue;
-
-    // 定期增加现金
-    if (scheduleSet.has(i)) { cashIn += amount; cashPile += amount; }
-
-    peak = Math.max(peak, p);
-    const drawdown = (peak - p) / peak; // 相对近高回撤
-
-    if (isFinite(drawdown) && drawdown >= dipPct && cashPile > 0) {
-      const buyUnits = cashPile / p;
-      units += buyUnits;
-      cashPile = 0;
-    }
-
-    const value = units * p + cashPile; // 剩余现金也计入组合价值
-    timeline.push({ t, p, cashIn, units, value, cashPile });
-  }
-  const endValue = timeline.length ? timeline[timeline.length - 1].value : 0;
-  return { timeline, result: { cashIn, units, endValue } };
-}
-
-function simulateTrendDCA(data, start, end, amount, frequency, maN = 200) {
-  const prices = data.map(d => d.p);
-  const ma = sma(prices, maN);
-  const schedule = buildScheduleIdx(data, start, end, frequency);
-  const scheduleSet = new Set(schedule);
-
-  let cashIn = 0, units = 0, cashPile = 0;
-  const timeline = [];
-
-  for (let i = 0; i < data.length; i++) {
-    const { t, p } = data[i];
-    if (t < start || t > end) continue;
-
-    if (scheduleSet.has(i)) { cashIn += amount; cashPile += amount; }
-
-    if (i >= maN - 1 && p > ma[i] && cashPile > 0) {
-      const buyUnits = cashPile / p;
-      units += buyUnits;
-      cashPile = 0;
-    }
-
-    const value = units * p + cashPile;
-    timeline.push({ t, p, cashIn, units, value, cashPile, ma: ma[i] });
   }
   const endValue = timeline.length ? timeline[timeline.length - 1].value : 0;
   return { timeline, result: { cashIn, units, endValue } };
@@ -360,7 +283,7 @@ function ensureCharts() {
   }
 }
 
-function updateCharts(priceTl, dca, ls, dip, trend, trendLabel = '趋势定投') {
+function updateCharts(priceTl, dca) {
   const pal = getPalette();
   const priceDs = priceTl.map(({ t, p }) => ({ x: t, y: p }));
   const buyMarkers = dca.timeline.filter((x, i, arr) => i===0 || x.units > arr[i-1].units).map(({ t, p }) => ({ x: t, y: p }));
@@ -383,19 +306,13 @@ function updateCharts(priceTl, dca, ls, dip, trend, trendLabel = '趋势定投')
 
   const toLine = tl => tl.map(({ t, value }) => ({ x: t, y: value }));
   state.charts.value.data.datasets = [
-    { label: 'DCA 定投', data: toLine(dca.timeline), borderColor: pal.cyan, pointRadius: 0, tension: .1 },
-    { label: '一次性买入', data: toLine(ls.timeline), borderColor: pal.violet, pointRadius: 0, tension: .1 },
-    { label: '逢跌买入', data: toLine(dip.timeline), borderColor: pal.success, pointRadius: 0, tension: .1 },
-    { label: trendLabel, data: toLine(trend.timeline), borderColor: pal.warning, pointRadius: 0, tension: .1 },
+    { label: 'DCA 定投', data: toLine(dca.timeline), borderColor: pal.cyan, pointRadius: 0, tension: .1 }
   ];
   state.charts.value.update();
 
   const toDD = tl => drawdownSeries(tl).map(({ t, dd }) => ({ x: t, y: dd }));
   state.charts.dd.data.datasets = [
-    { label: 'DCA 定投', data: toDD(dca.timeline), borderColor: pal.cyan, pointRadius: 0 },
-    { label: '一次性买入', data: toDD(ls.timeline), borderColor: pal.violet, pointRadius: 0 },
-    { label: '逢跌买入', data: toDD(dip.timeline), borderColor: pal.success, pointRadius: 0 },
-    { label: trendLabel, data: toDD(trend.timeline), borderColor: pal.warning, pointRadius: 0 },
+    { label: 'DCA 定投', data: toDD(dca.timeline), borderColor: pal.cyan, pointRadius: 0 }
   ];
   state.charts.dd.update();
 
@@ -436,35 +353,54 @@ function buildStages(start, end, granularity) {
   return stages;
 }
 
-function computeStageReturns(start, end, amount, frequency, dipPct, maDays, granularity) {
+function computeStageReturns(start, end, amount, frequency, granularity) {
   const stages = buildStages(start, end, granularity);
   const labels = [];
-  const dca = [], ls = [], dip = [], trend = [];
+  const dca = [];
 
   for (const s of stages) {
     const rDCA = metricsFromTimeline(simulateDCA(state.raw, s.start, s.end, amount, frequency).timeline).rtn || 0;
-    const rLS = metricsFromTimeline(simulateLumpSum(state.raw, s.start, s.end, amount, frequency).timeline).rtn || 0;
-    const rDip = metricsFromTimeline(simulateDipBuy(state.raw, s.start, s.end, amount, frequency, dipPct).timeline).rtn || 0;
-    const rTrend = metricsFromTimeline(simulateTrendDCA(state.raw, s.start, s.end, amount, frequency, maDays).timeline).rtn || 0;
     labels.push(s.label);
     dca.push(rDCA);
-    ls.push(rLS);
-    dip.push(rDip);
-    trend.push(rTrend);
   }
-  return { labels, dca, ls, dip, trend };
+  return { labels, dca };
 }
 
-function updateStageChart(stageData, trendLabel = '趋势定投') {
+function updateStageChart(stageData) {
   const pal = getPalette();
   state.charts.stage.data.labels = stageData.labels;
   state.charts.stage.data.datasets = [
-    { label: 'DCA 定投', data: stageData.dca, backgroundColor: pal.cyan },
-    { label: '一次性买入', data: stageData.ls, backgroundColor: pal.violet },
-    { label: '逢跌买入', data: stageData.dip, backgroundColor: pal.success },
-    { label: trendLabel, data: stageData.trend, backgroundColor: pal.warning },
+    { label: 'DCA 定投', data: stageData.dca, backgroundColor: pal.cyan }
   ];
   state.charts.stage.update();
+}
+
+function renderDcaTable(tl) {
+  const tbody = document.querySelector('#dcaTable tbody');
+  if (!tbody) return;
+  const rows = [];
+  let prev = null;
+  for (let i = 0; i < tl.length; i++) {
+    const cur = tl[i];
+    const investDelta = (prev ? cur.cashIn - prev.cashIn : cur.cashIn) || 0;
+    const unitsDelta = (prev ? cur.units - prev.units : cur.units) || 0;
+    if (investDelta > 0) {
+      const dateStr = cur.t.toISOString().slice(0, 10);
+      rows.push(
+        `<tr>
+          <td>${dateStr}</td>
+          <td>${fmtUSD(cur.p)}</td>
+          <td>${fmtUSD(investDelta)}</td>
+          <td>${unitsDelta.toFixed(8)}</td>
+          <td>${fmtUSD(cur.cashIn)}</td>
+          <td>${cur.units.toFixed(8)}</td>
+          <td>${fmtUSD(cur.value)}</td>
+        </tr>`
+      );
+    }
+    prev = cur;
+  }
+  tbody.innerHTML = rows.join('');
 }
 
 function refresh() {
@@ -477,29 +413,23 @@ function refresh() {
 
   const frequency = document.getElementById('frequency').value;
   const amount = Number(document.getElementById('amount').value || 0);
-  const dipPct = Number(document.getElementById('dipPct').value || 20) / 100;
-  const maDays = Number(document.getElementById('maDays').value || 200);
   const granularityEl = document.getElementById('stageGranularity');
   const granularity = (granularityEl && granularityEl.value) ? granularityEl.value : 'year';
 
   const priceTl = clampRange(state.raw, start, end);
   const dca = simulateDCA(state.raw, start, end, amount, frequency);
-  const ls = simulateLumpSum(state.raw, start, end, amount, frequency);
-  const dip = simulateDipBuy(state.raw, start, end, amount, frequency, dipPct);
-  const trend = simulateTrendDCA(state.raw, start, end, amount, frequency, maDays);
 
   // 指标
   renderMetrics(document.getElementById('metrics-dca'), metricsFromTimeline(dca.timeline));
-  renderMetrics(document.getElementById('metrics-ls'), metricsFromTimeline(ls.timeline));
-  renderMetrics(document.getElementById('metrics-dip'), metricsFromTimeline(dip.timeline));
-  renderMetrics(document.getElementById('metrics-trend'), metricsFromTimeline(trend.timeline));
 
-  const trendLabel = `趋势定投（MA${maDays}）`;
-  updateCharts(priceTl, dca, ls, dip, trend, trendLabel);
+  updateCharts(priceTl, dca);
 
-  // 阶段收益率
-  const stageData = computeStageReturns(start, end, amount, frequency, dipPct, maDays, granularity);
-  updateStageChart(stageData, trendLabel);
+  // 阶段收益率（仅 DCA）
+  const stageData = computeStageReturns(start, end, amount, frequency, granularity);
+  updateStageChart(stageData);
+
+  // 买入记录
+  renderDcaTable(dca.timeline);
 }
 
 function initUI() {
@@ -530,19 +460,10 @@ function initUI() {
     });
   });
 
-  // MA 预设快捷键
-  document.querySelectorAll('#maPresets button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const days = Number(btn.dataset.ma || 0);
-      if (days > 0) { document.getElementById('maDays').value = days; }
-      refresh();
-    });
-  });
-
   document.getElementById('runBacktest').addEventListener('click', refresh);
 
   // 自动刷新：核心参数变化时
-  ;['startDate', 'endDate', 'frequency', 'amount', 'dipPct', 'maDays', 'stageGranularity'].forEach(id => {
+  ;['startDate', 'endDate', 'frequency', 'amount', 'stageGranularity'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', refresh);
   });
