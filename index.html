@@ -54,6 +54,12 @@
             <label>趋势阈值（MA 天数）
               <input id="maDays" type="number" min="20" step="10" value="200" />
             </label>
+            <label>阶段粒度
+              <select id="stageGranularity">
+                <option value="year">按年</option>
+                <option value="quarter">按季度</option>
+              </select>
+            </label>
           </div>
           <div class="presets">
             预设：
@@ -84,6 +90,10 @@
       <div class="panel">
         <h3>投入 vs. 价值</h3>
         <canvas id="contribChart" height="100"></canvas>
+      </div>
+      <div class="panel">
+        <h3>阶段收益率对比</h3>
+        <canvas id="stageChart" height="110"></canvas>
       </div>
     </section>
 
