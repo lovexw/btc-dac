@@ -50,8 +50,20 @@ function clampRange(data, start, end) {
 }
 
 function fmtUSD(n) {
-  if (!isFinite(n)) return '-';
+  if (!isFinite(n)) return "-";
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
+}
+function fmtShortUSD(n) {
+  if (!isFinite(n)) return "-";
+  var abs = Math.abs(n);
+  function to1(x) {
+    var s = x.toFixed(1);
+    return s.slice(-2) === ".0" ? s.slice(0, -2) : s;
+  }
+  if (abs >= 1e9) return "$" + to1(n / 1e9) + "B";
+  if (abs >= 1e6) return "$" + to1(n / 1e6) + "M";
+  if (abs >= 1e3) return "$" + Math.round(n / 1e3).toString() + "k";
+  return "$" + Math.round(n);
 }
 function fmtPct(x) {
   if (!isFinite(x)) return '-';
@@ -110,7 +122,8 @@ function simulateDCA(data, start, end, amount, frequency) {
     const value = units * p;
     timeline.push({ t, p, cashIn, units, value });
   }
-  return { timeline, result: { cashIn, units, endValue: timeline.at(-1)?.value || 0 } };
+  const endValue = timeline.length ? timeline[timeline.length - 1].value : 0;
+  return { timeline, result: { cashIn, units, endValue } };
 }
 
 function simulateLumpSum(data, start, end, amount, frequency) {
@@ -127,7 +140,8 @@ function simulateLumpSum(data, start, end, amount, frequency) {
     const { t, p } = data[i];
     timeline.push({ t, p, cashIn: total, units, value: units * p });
   }
-  return { timeline, result: { cashIn: total, units, endValue: timeline.at(-1)?.value || 0 } };
+  const endValue = timeline.length ? timeline[timeline.length - 1].value : 0;
+  return { timeline, result: { cashIn: total, units, endValue } };
 }
 
 function simulateDipBuy(data, start, end, amount, frequency, dipPct = 0.2) {
@@ -157,7 +171,8 @@ function simulateDipBuy(data, start, end, amount, frequency, dipPct = 0.2) {
     const value = units * p + cashPile; // 剩余现金也计入组合价值
     timeline.push({ t, p, cashIn, units, value, cashPile });
   }
-  return { timeline, result: { cashIn, units, endValue: timeline.at(-1)?.value || 0 } };
+  const endValue = timeline.length ? timeline[timeline.length - 1].value : 0;
+  return { timeline, result: { cashIn, units, endValue } };
 }
 
 function simulateTrendDCA(data, start, end, amount, frequency, maN = 200) {
@@ -184,15 +199,17 @@ function simulateTrendDCA(data, start, end, amount, frequency, maN = 200) {
     const value = units * p + cashPile;
     timeline.push({ t, p, cashIn, units, value, cashPile, ma: ma[i] });
   }
-  return { timeline, result: { cashIn, units, endValue: timeline.at(-1)?.value || 0 } };
+  const endValue = timeline.length ? timeline[timeline.length - 1].value : 0;
+  return { timeline, result: { cashIn, units, endValue } };
 }
 
 // 指标计算
 function metricsFromTimeline(tl) {
   if (!tl.length) return {};
-  const cashIn = tl.at(-1).cashIn || 0;
-  const endValue = tl.at(-1).value || 0;
-  const startDate = tl[0].t, endDate = tl.at(-1).t;
+  const last = tl[tl.length - 1];
+  const cashIn = last ? (last.cashIn || 0) : 0;
+  const endValue = last ? (last.value || 0) : 0;
+  const startDate = tl[0].t, endDate = last.t;
   const years = daysBetween(startDate, endDate) / 365.25;
   const pnl = endValue - cashIn;
   const rtn = cashIn > 0 ? (endValue / cashIn - 1) : 0;
@@ -248,15 +265,17 @@ function drawdownSeries(tl) {
 function ensureCharts() {
   const pal = getPalette();
   const gridColor = pal.grid;
-  const timeScale = {
-    type: 'time',
-    time: {
-      unit: 'month',
-      displayFormats: { day: 'yyyy-MM-dd', month: 'yyyy-MM', quarter: 'yyyy-QQQ', year: 'yyyy' },
-      tooltipFormat: 'yyyy-MM-dd'
-    },
-    grid: { color: gridColor }
-  };
+  function makeTimeScale(unit) {
+    return {
+      type: 'time',
+      time: {
+        unit: unit,
+        displayFormats: { day: 'yyyy-MM-dd', month: 'yyyy-MM', quarter: 'yyyy-QQQ', year: 'yyyy' },
+        tooltipFormat: 'yyyy-MM-dd'
+      },
+      grid: { color: gridColor }
+    };
+  }
   const linearScale = { type: 'linear', grid: { color: gridColor } };
 
   if (!state.charts.price) {
@@ -268,8 +287,8 @@ function ensureCharts() {
         animation: false,
         parsing: false,
         scales: {
-          x: timeScale,
-          y: { ...linearScale, ticks: { callback: v => '$' + v } }
+          x: makeTimeScale('month'),
+          y: { ...linearScale, ticks: { callback: v => fmtShortUSD(v) } }
         },
         plugins: { legend: { labels: { color: pal.text } } }
       }
@@ -284,8 +303,8 @@ function ensureCharts() {
         animation: false,
         parsing: false,
         scales: {
-          x: timeScale,
-          y: { ...linearScale, ticks: { callback: v => '$' + v } }
+          x: makeTimeScale('year'),
+          y: { ...linearScale, ticks: { callback: v => fmtShortUSD(v) } }
         },
         plugins: { legend: { labels: { color: pal.text } } }
       }
@@ -300,8 +319,8 @@ function ensureCharts() {
         animation: false,
         parsing: false,
         scales: {
-          x: timeScale,
-          y: { ...linearScale, ticks: { callback: v => (v * 100).toFixed(0) + '%' } }
+          x: makeTimeScale('year'),
+          y: { ...linearScale, suggestedMax: 0, suggestedMin: -1, ticks: { callback: v => (v * 100).toFixed(0) + '%' } }
         },
         plugins: { legend: { labels: { color: pal.text } } }
       }
@@ -316,8 +335,8 @@ function ensureCharts() {
         animation: false,
         parsing: false,
         scales: {
-          x: timeScale,
-          y: { ...linearScale, ticks: { callback: v => '$' + v } }
+          x: makeTimeScale('year'),
+          y: { ...linearScale, ticks: { callback: v => fmtShortUSD(v) } }
         },
         plugins: { legend: { labels: { color: pal.text } } }
       }
@@ -345,6 +364,16 @@ function updateCharts(priceTl, dca, ls, dip, trend, trendLabel = '趋势定投')
   const pal = getPalette();
   const priceDs = priceTl.map(({ t, p }) => ({ x: t, y: p }));
   const buyMarkers = dca.timeline.filter((x, i, arr) => i===0 || x.units > arr[i-1].units).map(({ t, p }) => ({ x: t, y: p }));
+
+  const minX = priceTl.length ? priceTl[0].t : undefined;
+  const maxX = priceTl.length ? priceTl[priceTl.length - 1].t : undefined;
+  const chartsToBound = [state.charts.price, state.charts.value, state.charts.dd, state.charts.contrib];
+  for (const c of chartsToBound) {
+    if (c && c.options && c.options.scales && c.options.scales.x) {
+      c.options.scales.x.min = minX;
+      c.options.scales.x.max = maxX;
+    }
+  }
 
   state.charts.price.data.datasets = [
     { label: 'BTC 价格', data: priceDs, borderColor: pal.blue, pointRadius: 0, tension: .1 },
@@ -442,15 +471,16 @@ function refresh() {
   // 解析输入并做健壮性处理
   let start = new Date(document.getElementById('startDate').value);
   let end = new Date(document.getElementById('endDate').value);
-  if (!(start instanceof Date) || isNaN(start)) start = state.raw[0]?.t || new Date('2017-01-01');
-  if (!(end instanceof Date) || isNaN(end)) end = state.raw[state.raw.length - 1]?.t || new Date();
+  if (!(start instanceof Date) || isNaN(start)) start = state.raw[0] ? state.raw[0].t : new Date('2017-01-01');
+  if (!(end instanceof Date) || isNaN(end)) end = state.raw.length ? state.raw[state.raw.length - 1].t : new Date();
   if (start > end) { const tmp = start; start = end; end = tmp; }
 
   const frequency = document.getElementById('frequency').value;
   const amount = Number(document.getElementById('amount').value || 0);
   const dipPct = Number(document.getElementById('dipPct').value || 20) / 100;
   const maDays = Number(document.getElementById('maDays').value || 200);
-  const granularity = (document.getElementById('stageGranularity')?.value) || 'year';
+  const granularityEl = document.getElementById('stageGranularity');
+  const granularity = (granularityEl && granularityEl.value) ? granularityEl.value : 'year';
 
   const priceTl = clampRange(state.raw, start, end);
   const dca = simulateDCA(state.raw, start, end, amount, frequency);
