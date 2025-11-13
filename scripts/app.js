@@ -248,7 +248,15 @@ function drawdownSeries(tl) {
 function ensureCharts() {
   const pal = getPalette();
   const gridColor = pal.grid;
-  const timeScale = { type: 'time', time: { unit: 'month' }, grid: { color: gridColor } };
+  const timeScale = {
+    type: 'time',
+    time: {
+      unit: 'month',
+      displayFormats: { day: 'yyyy-MM-dd', month: 'yyyy-MM', quarter: 'yyyy-QQQ', year: 'yyyy' },
+      tooltipFormat: 'yyyy-MM-dd'
+    },
+    grid: { color: gridColor }
+  };
   const linearScale = { type: 'linear', grid: { color: gridColor } };
 
   if (!state.charts.price) {
@@ -333,7 +341,7 @@ function ensureCharts() {
   }
 }
 
-function updateCharts(priceTl, dca, ls, dip, trend) {
+function updateCharts(priceTl, dca, ls, dip, trend, trendLabel = '趋势定投') {
   const pal = getPalette();
   const priceDs = priceTl.map(({ t, p }) => ({ x: t, y: p }));
   const buyMarkers = dca.timeline.filter((x, i, arr) => i===0 || x.units > arr[i-1].units).map(({ t, p }) => ({ x: t, y: p }));
@@ -349,7 +357,7 @@ function updateCharts(priceTl, dca, ls, dip, trend) {
     { label: 'DCA 定投', data: toLine(dca.timeline), borderColor: pal.cyan, pointRadius: 0, tension: .1 },
     { label: '一次性买入', data: toLine(ls.timeline), borderColor: pal.violet, pointRadius: 0, tension: .1 },
     { label: '逢跌买入', data: toLine(dip.timeline), borderColor: pal.success, pointRadius: 0, tension: .1 },
-    { label: '趋势定投', data: toLine(trend.timeline), borderColor: pal.warning, pointRadius: 0, tension: .1 },
+    { label: trendLabel, data: toLine(trend.timeline), borderColor: pal.warning, pointRadius: 0, tension: .1 },
   ];
   state.charts.value.update();
 
@@ -358,7 +366,7 @@ function updateCharts(priceTl, dca, ls, dip, trend) {
     { label: 'DCA 定投', data: toDD(dca.timeline), borderColor: pal.cyan, pointRadius: 0 },
     { label: '一次性买入', data: toDD(ls.timeline), borderColor: pal.violet, pointRadius: 0 },
     { label: '逢跌买入', data: toDD(dip.timeline), borderColor: pal.success, pointRadius: 0 },
-    { label: '趋势定投', data: toDD(trend.timeline), borderColor: pal.warning, pointRadius: 0 },
+    { label: trendLabel, data: toDD(trend.timeline), borderColor: pal.warning, pointRadius: 0 },
   ];
   state.charts.dd.update();
 
@@ -418,14 +426,14 @@ function computeStageReturns(start, end, amount, frequency, dipPct, maDays, gran
   return { labels, dca, ls, dip, trend };
 }
 
-function updateStageChart(stageData) {
+function updateStageChart(stageData, trendLabel = '趋势定投') {
   const pal = getPalette();
   state.charts.stage.data.labels = stageData.labels;
   state.charts.stage.data.datasets = [
     { label: 'DCA 定投', data: stageData.dca, backgroundColor: pal.cyan },
     { label: '一次性买入', data: stageData.ls, backgroundColor: pal.violet },
     { label: '逢跌买入', data: stageData.dip, backgroundColor: pal.success },
-    { label: '趋势定投', data: stageData.trend, backgroundColor: pal.warning },
+    { label: trendLabel, data: stageData.trend, backgroundColor: pal.warning },
   ];
   state.charts.stage.update();
 }
@@ -456,11 +464,12 @@ function refresh() {
   renderMetrics(document.getElementById('metrics-dip'), metricsFromTimeline(dip.timeline));
   renderMetrics(document.getElementById('metrics-trend'), metricsFromTimeline(trend.timeline));
 
-  updateCharts(priceTl, dca, ls, dip, trend);
+  const trendLabel = `趋势定投（MA${maDays}）`;
+  updateCharts(priceTl, dca, ls, dip, trend, trendLabel);
 
   // 阶段收益率
   const stageData = computeStageReturns(start, end, amount, frequency, dipPct, maDays, granularity);
-  updateStageChart(stageData);
+  updateStageChart(stageData, trendLabel);
 }
 
 function initUI() {
@@ -487,6 +496,15 @@ function initUI() {
       if (p === '100w') { document.getElementById('amount').value = 100; document.getElementById('frequency').value = 'weekly'; }
       if (p === '50w') { document.getElementById('amount').value = 50; document.getElementById('frequency').value = 'weekly'; }
       if (p === '500w') { document.getElementById('amount').value = 500; document.getElementById('frequency').value = 'weekly'; }
+      refresh();
+    });
+  });
+
+  // MA 预设快捷键
+  document.querySelectorAll('#maPresets button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const days = Number(btn.dataset.ma || 0);
+      if (days > 0) { document.getElementById('maDays').value = days; }
       refresh();
     });
   });
