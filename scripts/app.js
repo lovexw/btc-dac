@@ -12,8 +12,25 @@ const state = {
   charts: {},
 };
 
+let PALETTE = null;
+function getPalette() {
+  if (PALETTE) return PALETTE;
+  const s = getComputedStyle(document.documentElement);
+  PALETTE = {
+    grid: (s.getPropertyValue('--grid') || 'rgba(255,255,255,0.12)').trim(),
+    text: (s.getPropertyValue('--text') || '#dbe7ff').trim(),
+    cyan: (s.getPropertyValue('--accent-cyan') || '#22d3ee').trim(),
+    blue: (s.getPropertyValue('--accent-blue') || '#3b82f6').trim(),
+    violet: (s.getPropertyValue('--accent-violet') || '#8b5cf6').trim(),
+    success: (s.getPropertyValue('--success') || '#10b981').trim(),
+    warning: (s.getPropertyValue('--warning') || '#f59e0b').trim(),
+  };
+  return PALETTE;
+}
+
 async function loadCSV() {
   const res = await fetch('./public/btc-price.csv');
+  if (!res.ok) throw new Error('无法加载价格数据');
   const text = await res.text();
   const lines = text.trim().split(/\r?\n/);
   const out = [];
@@ -229,7 +246,8 @@ function drawdownSeries(tl) {
 }
 
 function ensureCharts() {
-  const gridColor = 'rgba(255,255,255,0.12)';
+  const pal = getPalette();
+  const gridColor = pal.grid;
   const timeScale = { type: 'time', time: { unit: 'month' }, grid: { color: gridColor } };
   const linearScale = { type: 'linear', grid: { color: gridColor } };
 
@@ -237,83 +255,194 @@ function ensureCharts() {
     state.charts.price = new Chart(document.getElementById('priceChart'), {
       type: 'line',
       data: { datasets: [] },
-      options: { responsive: true, animation: false, parsing: false,
-        scales: { x: timeScale, y: { ...linearScale, ticks: { callback: v => '$' + v } } },
-        plugins: { legend: { labels: { color: '#dbe7ff' } } }
+      options: {
+        responsive: true,
+        animation: false,
+        parsing: false,
+        scales: {
+          x: timeScale,
+          y: { ...linearScale, ticks: { callback: v => '$' + v } }
+        },
+        plugins: { legend: { labels: { color: pal.text } } }
       }
     });
   }
   if (!state.charts.value) {
     state.charts.value = new Chart(document.getElementById('valueChart'), {
-      type: 'line', data: { datasets: [] },
-      options: { responsive: true, animation: false, parsing: false,
-        scales: { x: timeScale, y: { ...linearScale, ticks: { callback: v => '$' + v } } },
-        plugins: { legend: { labels: { color: '#dbe7ff' } } }
+      type: 'line',
+      data: { datasets: [] },
+      options: {
+        responsive: true,
+        animation: false,
+        parsing: false,
+        scales: {
+          x: timeScale,
+          y: { ...linearScale, ticks: { callback: v => '$' + v } }
+        },
+        plugins: { legend: { labels: { color: pal.text } } }
       }
     });
   }
   if (!state.charts.dd) {
     state.charts.dd = new Chart(document.getElementById('ddChart'), {
-      type: 'line', data: { datasets: [] },
-      options: { responsive: true, animation: false, parsing: false,
-        scales: { x: timeScale, y: { ...linearScale, ticks: { callback: v => (v*100).toFixed(0)+'%' } } },
-        plugins: { legend: { labels: { color: '#dbe7ff' } } }
+      type: 'line',
+      data: { datasets: [] },
+      options: {
+        responsive: true,
+        animation: false,
+        parsing: false,
+        scales: {
+          x: timeScale,
+          y: { ...linearScale, ticks: { callback: v => (v * 100).toFixed(0) + '%' } }
+        },
+        plugins: { legend: { labels: { color: pal.text } } }
       }
     });
   }
   if (!state.charts.contrib) {
     state.charts.contrib = new Chart(document.getElementById('contribChart'), {
-      type: 'line', data: { datasets: [] },
-      options: { responsive: true, animation: false, parsing: false,
-        scales: { x: timeScale, y: { ...linearScale, ticks: { callback: v => '$' + v } } },
-        plugins: { legend: { labels: { color: '#dbe7ff' } } }
+      type: 'line',
+      data: { datasets: [] },
+      options: {
+        responsive: true,
+        animation: false,
+        parsing: false,
+        scales: {
+          x: timeScale,
+          y: { ...linearScale, ticks: { callback: v => '$' + v } }
+        },
+        plugins: { legend: { labels: { color: pal.text } } }
+      }
+    });
+  }
+  if (!state.charts.stage) {
+    state.charts.stage = new Chart(document.getElementById('stageChart'), {
+      type: 'bar',
+      data: { labels: [], datasets: [] },
+      options: {
+        responsive: true,
+        animation: false,
+        parsing: false,
+        scales: {
+          x: { grid: { color: gridColor } },
+          y: { ...linearScale, ticks: { callback: v => (v * 100).toFixed(0) + '%' } }
+        },
+        plugins: { legend: { labels: { color: pal.text } } }
       }
     });
   }
 }
 
 function updateCharts(priceTl, dca, ls, dip, trend) {
+  const pal = getPalette();
   const priceDs = priceTl.map(({ t, p }) => ({ x: t, y: p }));
   const buyMarkers = dca.timeline.filter((x, i, arr) => i===0 || x.units > arr[i-1].units).map(({ t, p }) => ({ x: t, y: p }));
 
   state.charts.price.data.datasets = [
-    { label: 'BTC 价格', data: priceDs, borderColor: '#3b82f6', pointRadius: 0, tension: .1 },
-    { label: 'DCA 买入点', data: buyMarkers, type: 'scatter', borderColor: '#22d3ee', backgroundColor: '#22d3ee', pointRadius: 2 }
+    { label: 'BTC 价格', data: priceDs, borderColor: pal.blue, pointRadius: 0, tension: .1 },
+    { label: 'DCA 买入点', data: buyMarkers, type: 'scatter', borderColor: pal.cyan, backgroundColor: pal.cyan, pointRadius: 2 }
   ];
   state.charts.price.update();
 
   const toLine = tl => tl.map(({ t, value }) => ({ x: t, y: value }));
   state.charts.value.data.datasets = [
-    { label: 'DCA 定投', data: toLine(dca.timeline), borderColor: '#22d3ee', pointRadius: 0, tension: .1 },
-    { label: '一次性买入', data: toLine(ls.timeline), borderColor: '#8b5cf6', pointRadius: 0, tension: .1 },
-    { label: '逢跌买入', data: toLine(dip.timeline), borderColor: '#10b981', pointRadius: 0, tension: .1 },
-    { label: '趋势定投', data: toLine(trend.timeline), borderColor: '#f59e0b', pointRadius: 0, tension: .1 },
+    { label: 'DCA 定投', data: toLine(dca.timeline), borderColor: pal.cyan, pointRadius: 0, tension: .1 },
+    { label: '一次性买入', data: toLine(ls.timeline), borderColor: pal.violet, pointRadius: 0, tension: .1 },
+    { label: '逢跌买入', data: toLine(dip.timeline), borderColor: pal.success, pointRadius: 0, tension: .1 },
+    { label: '趋势定投', data: toLine(trend.timeline), borderColor: pal.warning, pointRadius: 0, tension: .1 },
   ];
   state.charts.value.update();
 
   const toDD = tl => drawdownSeries(tl).map(({ t, dd }) => ({ x: t, y: dd }));
   state.charts.dd.data.datasets = [
-    { label: 'DCA 定投', data: toDD(dca.timeline), borderColor: '#22d3ee', pointRadius: 0 },
-    { label: '一次性买入', data: toDD(ls.timeline), borderColor: '#8b5cf6', pointRadius: 0 },
-    { label: '逢跌买入', data: toDD(dip.timeline), borderColor: '#10b981', pointRadius: 0 },
-    { label: '趋势定投', data: toDD(trend.timeline), borderColor: '#f59e0b', pointRadius: 0 },
+    { label: 'DCA 定投', data: toDD(dca.timeline), borderColor: pal.cyan, pointRadius: 0 },
+    { label: '一次性买入', data: toDD(ls.timeline), borderColor: pal.violet, pointRadius: 0 },
+    { label: '逢跌买入', data: toDD(dip.timeline), borderColor: pal.success, pointRadius: 0 },
+    { label: '趋势定投', data: toDD(trend.timeline), borderColor: pal.warning, pointRadius: 0 },
   ];
   state.charts.dd.update();
 
   state.charts.contrib.data.datasets = [
     { label: '总投入（DCA）', data: dca.timeline.map(({ t, cashIn }) => ({ x: t, y: cashIn })), borderColor: 'rgba(59,130,246,.8)', backgroundColor: 'rgba(59,130,246,.2)', pointRadius: 0, tension: .1, fill: false },
-    { label: '组合价值（DCA）', data: dca.timeline.map(({ t, value }) => ({ x: t, y: value })), borderColor: 'rgba(34,211,238,1)', backgroundColor: 'rgba(34,211,238,.15)', pointRadius: 0, tension: .1, fill: true },
+    { label: '组合价值（DCA）', data: dca.timeline.map(({ t, value }) => ({ x: t, y: value })), borderColor: pal.cyan, backgroundColor: 'rgba(34,211,238,.15)', pointRadius: 0, tension: .1, fill: true },
   ];
   state.charts.contrib.update();
 }
 
+// 阶段划分与可视化
+function quarterOf(date) { return Math.floor(date.getMonth() / 3) + 1; }
+function startOfQuarter(date) { const q = Math.floor(date.getMonth() / 3); return new Date(date.getFullYear(), q * 3, 1); }
+
+function buildStages(start, end, granularity) {
+  const stages = [];
+  let cur = new Date(start);
+  while (cur <= end) {
+    let next;
+    if (granularity === 'year') {
+      next = new Date(cur.getFullYear() + 1, 0, 1);
+    } else if (granularity === 'quarter') {
+      const qStart = startOfQuarter(cur);
+      next = new Date(qStart.getFullYear(), qStart.getMonth() + 3, 1);
+    } else {
+      next = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+    }
+    const stageStart = new Date(cur);
+    const stageEnd = new Date(Math.min(end.getTime(), next.getTime() - 86400000));
+    const label = (granularity === 'year')
+      ? `${stageStart.getFullYear()}`
+      : (granularity === 'quarter')
+        ? `${stageStart.getFullYear()}-Q${quarterOf(stageStart)}`
+        : `${stageStart.getFullYear()}-${String(stageStart.getMonth() + 1).padStart(2, '0')}`;
+    stages.push({ start: stageStart, end: stageEnd, label });
+    cur = next;
+  }
+  return stages;
+}
+
+function computeStageReturns(start, end, amount, frequency, dipPct, maDays, granularity) {
+  const stages = buildStages(start, end, granularity);
+  const labels = [];
+  const dca = [], ls = [], dip = [], trend = [];
+
+  for (const s of stages) {
+    const rDCA = metricsFromTimeline(simulateDCA(state.raw, s.start, s.end, amount, frequency).timeline).rtn || 0;
+    const rLS = metricsFromTimeline(simulateLumpSum(state.raw, s.start, s.end, amount, frequency).timeline).rtn || 0;
+    const rDip = metricsFromTimeline(simulateDipBuy(state.raw, s.start, s.end, amount, frequency, dipPct).timeline).rtn || 0;
+    const rTrend = metricsFromTimeline(simulateTrendDCA(state.raw, s.start, s.end, amount, frequency, maDays).timeline).rtn || 0;
+    labels.push(s.label);
+    dca.push(rDCA);
+    ls.push(rLS);
+    dip.push(rDip);
+    trend.push(rTrend);
+  }
+  return { labels, dca, ls, dip, trend };
+}
+
+function updateStageChart(stageData) {
+  const pal = getPalette();
+  state.charts.stage.data.labels = stageData.labels;
+  state.charts.stage.data.datasets = [
+    { label: 'DCA 定投', data: stageData.dca, backgroundColor: pal.cyan },
+    { label: '一次性买入', data: stageData.ls, backgroundColor: pal.violet },
+    { label: '逢跌买入', data: stageData.dip, backgroundColor: pal.success },
+    { label: '趋势定投', data: stageData.trend, backgroundColor: pal.warning },
+  ];
+  state.charts.stage.update();
+}
+
 function refresh() {
-  const start = new Date(document.getElementById('startDate').value);
-  const end = new Date(document.getElementById('endDate').value);
+  // 解析输入并做健壮性处理
+  let start = new Date(document.getElementById('startDate').value);
+  let end = new Date(document.getElementById('endDate').value);
+  if (!(start instanceof Date) || isNaN(start)) start = state.raw[0]?.t || new Date('2017-01-01');
+  if (!(end instanceof Date) || isNaN(end)) end = state.raw[state.raw.length - 1]?.t || new Date();
+  if (start > end) { const tmp = start; start = end; end = tmp; }
+
   const frequency = document.getElementById('frequency').value;
   const amount = Number(document.getElementById('amount').value || 0);
   const dipPct = Number(document.getElementById('dipPct').value || 20) / 100;
   const maDays = Number(document.getElementById('maDays').value || 200);
+  const granularity = (document.getElementById('stageGranularity')?.value) || 'year';
 
   const priceTl = clampRange(state.raw, start, end);
   const dca = simulateDCA(state.raw, start, end, amount, frequency);
@@ -328,6 +457,10 @@ function refresh() {
   renderMetrics(document.getElementById('metrics-trend'), metricsFromTimeline(trend.timeline));
 
   updateCharts(priceTl, dca, ls, dip, trend);
+
+  // 阶段收益率
+  const stageData = computeStageReturns(start, end, amount, frequency, dipPct, maDays, granularity);
+  updateStageChart(stageData);
 }
 
 function initUI() {
@@ -345,6 +478,9 @@ function initUI() {
   startEl.value = toYMD(minDate);
   endEl.value = toYMD(maxDate);
 
+  const stageEl = document.getElementById('stageGranularity');
+  if (stageEl) stageEl.value = 'year';
+
   document.querySelectorAll('.presets button').forEach(btn => {
     btn.addEventListener('click', () => {
       const p = btn.dataset.preset;
@@ -358,13 +494,19 @@ function initUI() {
   document.getElementById('runBacktest').addEventListener('click', refresh);
 
   // 自动刷新：核心参数变化时
-  ['startDate', 'endDate', 'frequency', 'amount', 'dipPct', 'maDays'].forEach(id => {
-    document.getElementById(id).addEventListener('change', refresh);
+  ;['startDate', 'endDate', 'frequency', 'amount', 'dipPct', 'maDays', 'stageGranularity'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', refresh);
   });
 }
 
 async function main() {
-  state.raw = await loadCSV();
+  try {
+    state.raw = await loadCSV();
+  } catch (e) {
+    console.error(e);
+    return;
+  }
   ensureCharts();
   initUI();
   refresh();
