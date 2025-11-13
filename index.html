@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>比特币定投（DCA）策略实验室 · 2017-01-01 — 2025-11-01</title>
-  <meta name="description" content="围绕比特币定投（Dollar-Cost Averaging, DCA）的可视化策略实验室：多种频率与条件、对比一次性买入与择时策略、风险回撤、滚动收益等全维度分析（覆盖 2017-01-01 至 2025-11-01）。" />
+  <title>比特币定投（DCA）魅力展示 · 2017-01-01 — 2025-11-01</title>
+  <meta name="description" content="围绕比特币定投（Dollar-Cost Averaging, DCA）的可视化：聚焦长期定投的简单与强大，只需设定日期区间、频率与金额，即可直观看到‘时间 × 纪律 × 分散买入’带来的力量（覆盖 2017-01-01 至 2025-11-01）。" />
   <link rel="preconnect" href="https://cdn.jsdelivr.net"/>
   <link rel="stylesheet" href="./styles/main.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%232563eb'/><text x='50' y='60' text-anchor='middle' font-size='60' fill='white'>₿</text></svg>">
@@ -12,8 +12,8 @@
 <body>
   <header class="site-header">
     <div class="container">
-      <h1 class="brand">比特币定投（DCA）策略实验室</h1>
-      <p class="subtitle">用数据说话：长期投资 vs. 短期投机 · 数据区间：2017-01-01 — 2025-11-01</p>
+      <h1 class="brand">比特币定投（DCA）魅力展示</h1>
+      <p class="subtitle">用数据说话：长期投资 · 数据区间：2017-01-01 — 2025-11-01</p>
     </div>
   </header>
 
@@ -48,12 +48,6 @@
             <label>每期投入（USD）
               <input id="amount" type="number" min="1" step="1" value="100" />
             </label>
-            <label>“逢跌买入”阈值（%）
-              <input id="dipPct" type="number" step="1" value="20" />
-            </label>
-            <label>趋势阈值（MA 天数）
-              <input id="maDays" type="number" min="20" step="10" value="200" />
-            </label>
             <label>阶段粒度
               <select id="stageGranularity">
                 <option value="year">按年</option>
@@ -66,12 +60,6 @@
             <button data-preset="100w">$100/周</button>
             <button data-preset="50w">$50/周</button>
             <button data-preset="500w">$500/周</button>
-          </div>
-          <div class="presets" id="maPresets">
-            MA 预设：
-            <button data-ma="200">MA200</button>
-            <button data-ma="350">MA350</button>
-            <button data-ma="700">MA700</button>
           </div>
           <div class="actions">
             <button id="runBacktest">计算图表</button>
@@ -86,7 +74,7 @@
         <canvas id="priceChart" height="120"></canvas>
       </div>
       <div class="panel">
-        <h3>组合价值（对比）</h3>
+        <h3>组合价值（DCA）</h3>
         <canvas id="valueChart" height="120"></canvas>
       </div>
       <div class="panel">
@@ -98,27 +86,35 @@
         <canvas id="contribChart" height="100"></canvas>
       </div>
       <div class="panel">
-        <h3>阶段收益率对比</h3>
+        <h3>阶段收益率（DCA）</h3>
         <canvas id="stageChart" height="110"></canvas>
       </div>
     </section>
 
     <section class="metrics">
       <div class="metric-card">
-        <h4>DCA 定投</h4>
+        <h4>DCA 定投（核心指标）</h4>
         <ul id="metrics-dca"></ul>
       </div>
-      <div class="metric-card">
-        <h4>一次性买入（同等总投入）</h4>
-        <ul id="metrics-ls"></ul>
-      </div>
-      <div class="metric-card">
-        <h4>逢跌买入</h4>
-        <ul id="metrics-dip"></ul>
-      </div>
-      <div class="metric-card">
-        <h4>趋势定投（仅价格高于 MA 时买）</h4>
-        <ul id="metrics-trend"></ul>
+    </section>
+
+    <section class="data-table">
+      <h3>定投买入记录</h3>
+      <div class="table-wrap">
+        <table id="dcaTable">
+          <thead>
+            <tr>
+              <th>日期</th>
+              <th>价格</th>
+              <th>当期投入</th>
+              <th>买入数量</th>
+              <th>累计投入</th>
+              <th>累计持有</th>
+              <th>组合价值</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
       </div>
     </section>
 
@@ -127,13 +123,13 @@
       <ul>
         <li>不用预测短期涨跌：价格高时买入份额少，价格低时买入份额多，自动摊薄成本。</li>
         <li>面对黑天鹅和大回撤，持续买入能“逆向增持”，把波动转化为长期复利的朋友。</li>
-        <li>择时难度极高：本页提供的一次性买入/逢跌/趋势等策略，帮助你直观看到“错过最佳/最差时机”的影响。</li>
+        <li>通过“价格与买点”“组合价值”“最大回撤”等图表，直观看到纪律与时间的作用。</li>
       </ul>
       <h3>阅读图表的小技巧</h3>
       <ul>
         <li>在“价格与买点”图上，放大到具体阶段，观察定投如何在下跌期显著增加持币数量。</li>
-        <li>查看“组合最大回撤”，理解各策略在糟糕行情中的体验差异。</li>
-        <li>关注“滚动一年收益”或 CAGR 与波动、回撤的组合，综合评估风险调整后的表现。</li>
+        <li>查看“组合最大回撤”，理解长期持有与持续买入在糟糕行情中的体验差异。</li>
+        <li>关注 CAGR 与回撤、波动的组合，综合评估风险调整后的表现。</li>
       </ul>
       <p class="disclaimer small">注：回测假设无手续费与滑点，仅为教育展示，实际结果会受交易成本、税费、实现路径等影响。</p>
     </section>
